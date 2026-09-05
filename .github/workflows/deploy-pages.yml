@@ -1,55 +1,61 @@
- name: Deploy Godot Web to GitHub Pages
+name: Deploy Godot Web to GitHub Pages
 
- on:
-   push:
-     branches: [main]
-   workflow_dispatch:  # Permet de déclencher manuellement
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Permet de déclencher manuellement
 
- permissions:
-   contents: read
-   pages: write
-   id-token: write
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
- concurrency:
-   group: pages
-   cancel-in-progress: false
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
- jobs:
-   deploy:
-     environment:
-       name: github-pages
-       url: ${{ steps.deployment.outputs.page_url }}
-     runs-on: ubuntu-latest
-     steps:
-       - name: Checkout with LFS
-         uses: actions/checkout@v4
-         with:
-           lfs: true  # ⚠️ CLÉ : Active LFS pour récupérer les vrais fichiers
-           fetch-depth: 0
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # ⬇ NOUVEAU : Force Node.js 24 pour éviter l'erreur de dépréciation
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
-       - name: Verify LFS files are real
-         run: |
-           echo "Vérification des fichiers LFS..."
-           for f in index.pck index.wasm; do
-             if [ -f "$f" ]; then
-               SIZE=$(stat -c%s "$f")
-               echo "$f : $SIZE octets"
-               if [ "$SIZE" -lt 1000 ]; then
-                 echo "❌ ERREUR : $f semble être un pointeur LFS, pas le vrai fichier !"
-                 exit 1
-               fi
-             fi
-           done
-           echo "✅ Fichiers LFS OK"
+      - name: Checkout with LFS
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # ⚠️ CLÉ : Active LFS pour récupérer les vrais fichiers
+          fetch-depth: 0
 
-       - name: Setup Pages
-         uses: actions/configure-pages@v5
+      - name: Verify LFS files are real
+        run: |
+          echo "Vérification des fichiers LFS..."
+          for f in index.pck index.wasm; do
+            if [ -f "$f" ]; then
+              SIZE=$(stat -c%s "$f")
+              echo "$f : $SIZE octets"
+              if [ "$SIZE" -lt 1000 ]; then
+                echo "❌ ERREUR : $f semble être un pointeur LFS, pas le vrai fichier !"
+                exit 1
+              fi
+            fi
+          done
+          echo "✅ Fichiers LFS OK"
 
-       - name: Upload artifact
-         uses: actions/upload-pages-artifact@v3
-         with:
-           path: .
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-       - name: Deploy to GitHub Pages
-         id: deployment
-         uses: actions/deploy-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
